@@ -32,7 +32,9 @@
 #' @param trend_method How should the \code{xgboost} try to deal with trends?  Currently the only options to \code{none} is 
 #' \code{auto.arima}-style \code{differencing}, which is based on successive KPSS tests until there is no significant evidence the
 #' remaining series is non-stationary.
+#' @param weight, a vector indicating the weight for each row of the input.
 #' @param ... Additional arguments passed to \code{xgboost}.  Only works if nrounds_method is "cv" or "manual".
+#' @import zoo
 #' @details This is the workhorse function for the \code{forecastxgb} package.
 #' It fits a model to a time series.  Under the hood, it creates a matrix of explanatory variables 
 #' based on lagged versions of the response time series, and (optionally) dummy variables (simple hot one encoding, or Fourier transforms) for seasons.  That 
@@ -100,7 +102,8 @@ xgbar <- function(y, xreg = NULL, maxlag = max(8, 2 * frequency(y)), nrounds = 1
                   verbose = FALSE, 
                   seas_method = c("dummies", "decompose", "fourier", "none"), 
                   K =  max(1, min(round(f / 4 - 1), 10)), 
-                  trend_method = c("none", "differencing"), ...){
+                  trend_method = c("none", "differencing"),
+                  weight = NULL, ...){
   # y <- AirPassengers; nrounds_method = "cv"; nrounds = 100; seas_method = "fourier"; trend_method = "differencing"; verbose = TRUE; xreg = NULL; maxlag = 8; lambda = 1; K = 1
 
   nrounds_method = match.arg(nrounds_method)
@@ -175,7 +178,6 @@ xgbar <- function(y, xreg = NULL, maxlag = max(8, 2 * frequency(y)), nrounds = 1
   origxreg <- xreg
   n <- orign - maxlag
   y2 <- ts(origy[-(1:(maxlag))], start = time(origy)[maxlag + 1], frequency = f)
-
   if(nrounds_method == "cv" & n < 15){
     warning("y is too short for cross-validation.  Will validate on the most recent 20 per cent instead.")
     nrounds_method <- "v"
@@ -238,7 +240,11 @@ xgbar <- function(y, xreg = NULL, maxlag = max(8, 2 * frequency(y)), nrounds = 1
   }  
   
   if(verbose){message("Fitting xgboost model")}
-  model <- xgboost(data = x, label = y2, nrounds = nrounds_use, verbose = verbose)
+  y2time <- as.yearmon(time(y2))
+  ytime <- as.yearmon(time(y))
+  intertime <- which(ytime %in% y2time)
+  
+  model <- xgboost(data = x, label = y2, nrounds = nrounds_use, verbose = verbose, weight = weight[intertime])
   
   fitted <- ts(c(rep(NA, maxlag), 
                  predict(model, newdata = x)), 

@@ -9,7 +9,7 @@ xgbar(y, xreg = NULL, maxlag = max(8, 2 * frequency(y)), nrounds = 100,
   nrounds_method = c("cv", "v", "manual"), nfold = ifelse(length(y) > 30,
   10, 5), lambda = 1, verbose = FALSE, seas_method = c("dummies",
   "decompose", "fourier", "none"), K = max(1, min(round(f/4 - 1), 10)),
-  trend_method = c("none", "differencing"), ...)
+  trend_method = c("none", "differencing"), weight = NULL, ...)
 }
 \arguments{
 \item{y}{A univariate time series.}
@@ -45,6 +45,8 @@ The transformation is only applied to \code{y}, not \code{xreg}.}
 \item{trend_method}{How should the \code{xgboost} try to deal with trends?  Currently the only options to \code{none} is 
 \code{auto.arima}-style \code{differencing}, which is based on successive KPSS tests until there is no significant evidence the
 remaining series is non-stationary.}
+
+\item{weight, }{a vector indicating the weight for each row of the input.}
 
 \item{...}{Additional arguments passed to \code{xgboost}.  Only works if nrounds_method is "cv" or "manual".}
 }
